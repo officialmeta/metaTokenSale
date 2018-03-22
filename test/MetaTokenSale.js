@@ -52,7 +52,7 @@ contract('MetaToken', (accounts) => {
 * Tests for the Sale
 */
 
-contract('MetaTokenSale', (accounts) => {
+contract('MetaTokenSale: Ownership', (accounts) => {
     let metaToken
     let metaTokenSale
     let day = 86400
@@ -67,6 +67,27 @@ contract('MetaTokenSale', (accounts) => {
         const metaTokenOwner = await metaToken.owner()
         metaTokenOwner.should.be.equal(metaTokenSale.address)
     })
+})
+
+//Tests for everything time related
+contract('MetaTokenSale: Time', (accounts) => {
+    let metaToken
+    let metaTokenSale
+    let day = 86400
+    let now
+
+    beforeEach('get the actual time', async function() {
+	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    })
+
+    it('user can\'t buy before opening', async () => {
+	
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(100, "ether"), accounts[1], now+10000, now+10010)
+	await metaTokenSale.addToWhitelist(accounts[4])
+	await metaTokenSale.setUserCap(accounts[4], web3.toWei(15, "ether"))
+	await assertFail(metaTokenSale.sendTransaction({ from: accounts[4], value: web3.toWei(2, "ether")}))
+
+    })
 
     it('user can buy meta in Phase 1', async () => {
 	
@@ -79,7 +100,6 @@ contract('MetaTokenSale', (accounts) => {
 
 	assert.equal(web3.fromWei(balance.toString(10), "ether"), 4800);
     })
-
 
     it('user can buy meta in Phase 2', async () => {
 	
@@ -95,34 +115,6 @@ contract('MetaTokenSale', (accounts) => {
 	assert.equal(web3.fromWei(balance.toString(10), "ether"), 3800);
     })
 
-    it('user can buy up to cap', async () => {
-	
-	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(10, "ether"), accounts[1], now-1, now+1000)
-	await metaTokenSale.addToWhitelist(accounts[3])
-	await metaTokenSale.setUserCap(accounts[3], web3.toWei(15, "ether"))
-	await metaTokenSale.sendTransaction({ from: accounts[3], value: web3.toWei(10, "ether")})
-	const balance = await metaToken.balanceOf(accounts[3])
-	assert.equal(web3.fromWei(balance.toString(10), "ether"), 48000);
-
-    })
-
-    it('user can\'t buy over cap', async () => {
-	
-	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(10, "ether"), accounts[1], now, now+1000)
-	await metaTokenSale.addToWhitelist(accounts[3])
-	await metaTokenSale.setUserCap(accounts[3], web3.toWei(15, "ether"))
-	await assertFail(metaTokenSale.sendTransaction({ from: accounts[3], value: web3.toWei(11, "ether")}))
-
-    })
-
-    it('user can\'t buy before opening', async () => {
-	
-	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(100, "ether"), accounts[1], now+10000, now+10010)
-	await metaTokenSale.addToWhitelist(accounts[4])
-	await metaTokenSale.setUserCap(accounts[4], web3.toWei(15, "ether"))
-	await assertFail(metaTokenSale.sendTransaction({ from: accounts[4], value: web3.toWei(2, "ether")}))
-
-    })
 
     it('user can\'t buy after closing', async () => {
 	
@@ -133,12 +125,33 @@ contract('MetaTokenSale', (accounts) => {
 	await assertFail(metaTokenSale.sendTransaction({ from: accounts[4], value: web3.toWei(2, "ether")}))
 
     })
+})
+
+//Whitelisting related tests
+contract('MetaTokenSale: Whitelist', (accounts) => {
+    let metaToken
+    let metaTokenSale
+    let day = 86400
+    let now
+
+    beforeEach('get the actual time', async function() {
+	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    })
 
     it('user can\'t buy if not whitelisted', async () => {
 	
 	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+100000)
 	await assertFail(metaTokenSale.sendTransaction({ from: accounts[4], value: web3.toWei(11, "ether")}))
 
+    })
+
+    it('user can be whitelsited', async () => {
+	
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+1000000)
+	await metaTokenSale.addToWhitelist(accounts[4])
+	await metaTokenSale.setUserCap(accounts[4], web3.toWei(15, "ether"))
+	await metaTokenSale.removeFromWhitelist(accounts[4])
+	assert.equal(await metaTokenSale.whitelist(accounts[4]), false);
     })
 
     it('user can be unwhitelsited', async () => {
@@ -150,15 +163,53 @@ contract('MetaTokenSale', (accounts) => {
 	assert.equal(await metaTokenSale.whitelist(accounts[4]), false);
     })
 
-    it('contributed ether lead to valid number of ether in the saleWallet', async () => {
+    it('ToDo: Groups can be whitelisted', async () => {
+
+	assert.equal(false, false);
+    })
+
+    it('ToDo: Groups can be unwhitelisted', async () => {
+
+	assert.equal(false, false);
+    })
+})
+
+//Tests concerning total and personal cap
+contract('MetaTokenSale: Cap', (accounts) => {
+    let metaToken
+    let metaTokenSale
+    let day = 86400
+    let now
+
+    beforeEach('get the actual time', async function() {
+	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    })
+
+
+    it('user can\'t buy over total cap', async () => {
 	
-	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+10000)
-	let balanceBeforeContribution = web3.eth.getBalance(accounts[1])
-	await metaTokenSale.addToWhitelist(accounts[5])
-	await metaTokenSale.setUserCap(accounts[5], web3.toWei(15, "ether"))
-	await metaTokenSale.sendTransaction({ from: accounts[5], value: web3.toWei(10, "ether")})
-	const balanceAfterContribution = web3.eth.getBalance(accounts[1])
-	assert.equal(balanceAfterContribution.valueOf()-balanceBeforeContribution.valueOf(), web3.toWei(10, "ether"))
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(10, "ether"), accounts[1], now, now+1000)
+	await metaTokenSale.addToWhitelist(accounts[3])
+	await metaTokenSale.setUserCap(accounts[3], web3.toWei(15, "ether"))
+	await assertFail(metaTokenSale.sendTransaction({ from: accounts[3], value: web3.toWei(11, "ether")}))
+
+    })
+
+    it('user can buy up to total cap', async () => {
+	
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(10, "ether"), accounts[1], now, now+1000)
+	await metaTokenSale.addToWhitelist(accounts[3])
+	await metaTokenSale.setUserCap(accounts[3], web3.toWei(15, "ether"))
+	await metaTokenSale.sendTransaction({ from: accounts[3], value: web3.toWei(10, "ether")})
+	const balance = await metaToken.balanceOf(accounts[3])
+	assert.equal(await web3.fromWei(balance.toString(10), "ether"), 48000);
+
+    })
+
+    it('ToDo: user can buy up to personal cap', async () => {
+	
+	assert.equal(false, false);
+
     })
 
     it('user can\'t exceed personal cap', async () => {
@@ -168,6 +219,84 @@ contract('MetaTokenSale', (accounts) => {
 	await metaTokenSale.setUserCap(accounts[5], web3.toWei(5, "ether"))
 	await assertFail(metaTokenSale.sendTransaction({ from: accounts[5], value: web3.toWei(6, "ether")}))
 
+    })
+})
+
+//Tests concerning minting
+contract('MetaTokenSale: Minting', (accounts) => {
+    let metaToken
+    let metaTokenSale
+    let day = 86400
+    let now
+
+    beforeEach('get the actual time', async function() {
+	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    })
+
+    it('ToDo: tokens get minted', async () => {
+	assert.equal(false, false);
+    })
+
+    it('ToDo: after closing no tokens get minted', async () => {
+	assert.equal(false, false);
+    })
+})
+
+//ToDo: Implement vesting contract
+contract('MetaTokenSale: Vesting', (accounts) => {
+    let metaToken
+    let metaTokenSale
+    let day = 86400
+    let now
+
+    beforeEach('get the actual time', async function() {
+	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    })
+
+    it('ToDo: Vesting to correct account', async () => {
+	assert.equal(false, false);
+    })
+
+    it('ToDo: Cliff', async () => {
+	assert.equal(false, false);
+    })
+
+    it('ToDo: Can access correct amount of tokens at every moment', async () => {
+	assert.equal(false, false);
+    })
+
+    it('ToDo: Correct amount after specific time', async () => {
+	assert.equal(false, false);
+    })
+})
+
+
+//Tests concerning contributions
+contract('MetaTokenSale: Contributions', (accounts) => {
+    let metaToken
+    let metaTokenSale
+    let day = 86400
+    let now
+
+    beforeEach('get the actual time', async function() {
+	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    })
+
+    it('TeamWallet is correct', async () => {
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+10000)
+	assert.equal(await metaTokenSale.wallet(), accounts[1])
+    })
+
+
+    it('contributed ether lead to valid number of ether in the saleWallet', async () => {
+	
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+10000)
+	let balanceBeforeContribution = web3.eth.getBalance(accounts[1])
+	await metaTokenSale.addToWhitelist(accounts[5])
+	await metaTokenSale.setUserCap(accounts[5], web3.toWei(15, "ether"))
+	await metaTokenSale.sendTransaction({ from: accounts[5], value: web3.toWei(10, "ether")})
+	const balanceAfterContribution = web3.eth.getBalance(accounts[1])
+	assert.equal(balanceAfterContribution.valueOf()-balanceBeforeContribution.valueOf(), web3.toWei(10, "ether"))
     })
 })
 
