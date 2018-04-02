@@ -103,6 +103,22 @@ contract('MetaTokenSale: Time', (accounts) => {
 	assert.equal(web3.fromWei(balance.toString(10), "ether"), 4800);
     })
 
+    it('user can\'t buy meta discounted if phase 1 cap is reached', async () => {
+	
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(100, "ether"), accounts[1], now, now+1000)
+	await metaTokenSale.addToWhitelist(accounts[2])
+	await metaTokenSale.setUserCap(accounts[2], web3.toWei(25, "ether"))
+	await metaTokenSale.sendTransaction({ from: accounts[2], value: web3.toWei(24, "ether")})
+
+	await metaTokenSale.addToWhitelist(accounts[5])
+	await metaTokenSale.setUserCap(accounts[5], web3.toWei(15, "ether"))
+	await metaTokenSale.sendTransaction({ from: accounts[5], value: web3.toWei(1, "ether")})
+
+	const balance = await metaToken.balanceOf(accounts[5])
+
+	assert.equal(web3.fromWei(balance.toString(10), "ether"), 3800);
+    })
+
     it('user can buy meta in Phase 2', async () => {
 	
 	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+10000000)
@@ -165,15 +181,6 @@ contract('MetaTokenSale: Whitelist', (accounts) => {
 	assert.equal(await metaTokenSale.whitelist(accounts[4]), false);
     })
 
-    it('ToDo: Groups can be whitelisted', async () => {
-
-	assert.equal(false, false);
-    })
-
-    it('ToDo: Groups can be unwhitelisted', async () => {
-
-	assert.equal(false, false);
-    })
 })
 
 //Tests concerning total and personal cap
@@ -208,10 +215,14 @@ contract('MetaTokenSale: Cap', (accounts) => {
 
     })
 
-    it('ToDo: user can buy up to personal cap', async () => {
+    it('user can buy up to personal cap', async () => {
 	
-	assert.equal(false, false);
-
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(10, "ether"), web3.toWei(10, "ether"), accounts[1], now, now+1000)
+	await metaTokenSale.addToWhitelist(accounts[3])
+	await metaTokenSale.setUserCap(accounts[3], web3.toWei(10, "ether"))
+	await metaTokenSale.sendTransaction({ from: accounts[3], value: web3.toWei(10, "ether")})
+	const balance = await metaToken.balanceOf(accounts[3])
+	assert.equal(await web3.fromWei(balance.toString(10), "ether"), 48000);
     })
 
     it('user can\'t exceed personal cap', async () => {
@@ -224,6 +235,7 @@ contract('MetaTokenSale: Cap', (accounts) => {
     })
 })
 
+/*
 //Tests concerning minting
 contract('MetaTokenSale: Minting', (accounts) => {
     let metaToken
@@ -239,11 +251,11 @@ contract('MetaTokenSale: Minting', (accounts) => {
 	assert.equal(false, false);
     })
 
-    it('ToDo: after closing no tokens get minted', async () => {
+    it('ToDo: after closing no tokens can be minted', async () => {
 	assert.equal(false, false);
     })
 })
-
+*/
 //Tests concerning vesting
 contract('MetaTokenSale: Vesting', (accounts) => {
     let metaToken
@@ -321,12 +333,14 @@ contract('MetaTokenSale: Contributions', (accounts) => {
 
     it('contributed ether lead to valid number of ether in the saleWallet', async () => {
 	
-	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+10000)
-	let balanceBeforeContribution = web3.eth.getBalance(accounts[1])
-	await metaTokenSale.addToWhitelist(accounts[5])
-	await metaTokenSale.setUserCap(accounts[5], web3.toWei(15, "ether"))
-	await metaTokenSale.sendTransaction({ from: accounts[5], value: web3.toWei(10, "ether")})
-	const balanceAfterContribution = web3.eth.getBalance(accounts[1])
+	const {metaToken, metaTokenSale} = await init(4000, web3.toWei(20, "ether"), web3.toWei(5, "ether"), accounts[8], now, now+100)
+	let balanceBeforeContribution = web3.eth.getBalance(accounts[8])
+	await metaTokenSale.addToWhitelist(accounts[7])
+	await metaTokenSale.setUserCap(accounts[7], web3.toWei(15, "ether"))
+	await metaTokenSale.sendTransaction({ from: accounts[7], value: web3.toWei(10, "ether")})
+	timeTravel(day)
+	await metaTokenSale.finalize()
+	const balanceAfterContribution = web3.eth.getBalance(accounts[8])
 	assert.equal(balanceAfterContribution.valueOf()-balanceBeforeContribution.valueOf(), web3.toWei(10, "ether"))
     })
 })
