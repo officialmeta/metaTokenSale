@@ -1,8 +1,10 @@
 const MetaToken = artifacts.require('./MetaToken.sol')
 const MetaTokenSale = artifacts.require('./MetaTokenSale.sol')
-const { should, EVMThrow } = require('./helpers')
-const assertFail = require("./assertFail");
-const timeTravel = require("./timeTravel");
+const TokenVesting = artifacts.require('./TokenVesting.sol')
+const { should, EVMThrow} = require('./helpers')
+const assertFail = require("./assertFail")
+const timeTravel = require("./timeTravel")
+const BigNumber = web3.BigNumber
 
 /*
 * Function to easily initialize the Sale/Token for every Test	
@@ -242,33 +244,62 @@ contract('MetaTokenSale: Minting', (accounts) => {
     })
 })
 
-//ToDo: Implement vesting contract
+//Tests concerning vesting
 contract('MetaTokenSale: Vesting', (accounts) => {
     let metaToken
     let metaTokenSale
-    let day = 86400
+    let tokenvesting
+    let minute = 60
+    //30 days
+    let month = 2592000
     let now
+    const amount = 25000000 
 
-    beforeEach('get the actual time', async function() {
+    beforeEach('get the actual time and setup contracts', async function() {
 	now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+
+	this.metaToken = await MetaToken.new()
+	this.start = now+minute
+	this.duration = 46656000
+	this.cliff = 15552000
+	this.tokenVesting = await TokenVesting.new(accounts[6], this.start, this.cliff, this.duration, true);
+
+    	this.metaTokenSale = await MetaTokenSale.new(this.metaToken.address, 4000, web3.toWei(25000, "ether"), web3.toWei(10000, "ether"), accounts[1], now, now+100000)
+	await this.metaToken.mint(this.tokenVesting.address, amount)
+	await this.metaToken.transferOwnership(this.metaTokenSale.address, { from: accounts[0] })
     })
 
-    it('ToDo: Vesting to correct account', async () => {
-	assert.equal(false, false);
-    })
+    it('cannot be released before cliff', async function () {
+	await assertFail(this.tokenVesting.release(this.metaToken.address))
+    });
 
-    it('ToDo: Cliff', async () => {
-	assert.equal(false, false);
-    })
+    it('can be released after cliff', async function () {
+	await timeTravel(this.cliff+minute);
+	await this.tokenVesting.release(this.metaToken.address).should.be.fulfilled;
+    });
 
-    it('ToDo: Can access correct amount of tokens at every moment', async () => {
-	assert.equal(false, false);
-    })
+    it('should release proper amount after cliff', async function () {
+	const balanceBefore = await this.metaToken.balanceOf(accounts[6]);
+	await timeTravel(this.cliff+minute);
 
-    it('ToDo: Correct amount after specific time', async () => {
-	assert.equal(false, false);
-    })
+	const { receipt } = await this.tokenVesting.release(this.metaToken.address);
+	const releaseTime = await web3.eth.getBlock(receipt.blockNumber).timestamp;
+
+	const balanceAfter = await this.metaToken.balanceOf(accounts[6]);
+	const balance = balanceAfter - balanceBefore
+	balance.should.equal(Math.floor(amount * ((releaseTime - this.start)/this.duration)));
+    });
+
+    it('should have released all after end', async function () {
+	const balanceBefore = await this.metaToken.balanceOf(accounts[6]);
+	await timeTravel(this.start+this.duration+minute);
+	await this.tokenVesting.release(this.metaToken.address);
+	const balanceAfter = await this.metaToken.balanceOf(accounts[6]);
+	const balance = balanceAfter - balanceBefore
+	balance.should.equal(amount);
+    });
 })
+
 
 
 //Tests concerning contributions
@@ -299,4 +330,6 @@ contract('MetaTokenSale: Contributions', (accounts) => {
 	assert.equal(balanceAfterContribution.valueOf()-balanceBeforeContribution.valueOf(), web3.toWei(10, "ether"))
     })
 })
+
+
 

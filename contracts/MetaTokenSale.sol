@@ -26,9 +26,9 @@ contract MetaTokenSale is MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, Whit
   function currentRate() public constant returns (uint256) {
       uint256 currentRate;
       if (now < openingTime + 7 days) {
-          currentRate = 4800;
+          currentRate = rate.mul(6).div(5);
       } else {
-          currentRate = 3800;
+          currentRate = rate.mul(19).div(20);
       }
 
       return currentRate;

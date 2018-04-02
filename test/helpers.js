@@ -4,5 +4,6 @@ const should = require('chai')
     .use(require('chai-bignumber')(BigNumber))
     .should()
 const EVMThrow = 'revert'
-module.exports = { should, EVMThrow }
+
+module.exports = { should, EVMThrow}
 

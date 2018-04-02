@@ -10,4 +10,5 @@ module.exports = seconds =>
           return resolve(result)
         });
       });
+
    
